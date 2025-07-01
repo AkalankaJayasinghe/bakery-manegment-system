@@ -26,8 +26,18 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'sales.php' ? 'active' : ''; ?>" href="<?php echo ADMIN_URL; ?>/sales.php">
+                    <i class="fa fa-shopping-cart"></i> Sales
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'active' : ''; ?>" href="<?php echo ADMIN_URL; ?>/reports.php">
                     <i class="fa fa-bar-chart"></i> Reports
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>" href="<?php echo ADMIN_URL; ?>/activity_logs.php">
+                    <i class="fa fa-list-alt"></i> Activity Logs
                 </a>
             </li>
         </ul>
