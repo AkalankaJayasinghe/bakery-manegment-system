@@ -297,8 +297,8 @@ include_once '../includes/header.php';
                                     <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
                                     <select class="form-select" id="role" name="role" required>
                                         <option value="">Select Role</option>
-                                        <option value="admin" <?php echo ($role == 'admin') ? 'selected' : ''; ?>>Administrator</option>
-                                        <option value="cashier" <?php echo ($role == 'cashier') ? 'selected' : ''; ?>>Cashier</option>
+                                        <option value="1" <?php echo ($role == '1') ? 'selected' : ''; ?>>Administrator</option>
+                                        <option value="3" <?php echo ($role == '3') ? 'selected' : ''; ?>>Cashier</option>
                                     </select>
                                 </div>
                                 
@@ -331,8 +331,8 @@ include_once '../includes/header.php';
                                         <input type="text" class="form-control me-2" name="search" placeholder="Search users..." value="<?php echo htmlspecialchars($searchTerm); ?>">
                                         <select class="form-select me-2" name="role_filter">
                                             <option value="">All Roles</option>
-                                            <option value="admin" <?php echo ($roleFilter == 'admin') ? 'selected' : ''; ?>>Admin</option>
-                                            <option value="cashier" <?php echo ($roleFilter == 'cashier') ? 'selected' : ''; ?>>Cashier</option>
+                                            <option value="1" <?php echo ($roleFilter == '1') ? 'selected' : ''; ?>>Admin</option>
+                                            <option value="3" <?php echo ($roleFilter == '3') ? 'selected' : ''; ?>>Cashier</option>
                                         </select>
                                         <button type="submit" class="btn btn-outline-secondary">
                                             <i class="fa fa-search"></i>
@@ -363,8 +363,8 @@ include_once '../includes/header.php';
                                             <td><?php echo htmlspecialchars($user['username']); ?></td>
                                             <td><?php echo htmlspecialchars($user['email']); ?></td>
                                             <td>
-                                                <span class="badge <?php echo ($user['role'] == 'admin') ? 'bg-primary' : 'bg-info'; ?>">
-                                                    <?php echo ucfirst($user['role']); ?>
+                                                <span class="badge <?php echo ($user['role'] == '1') ? 'bg-primary' : 'bg-info'; ?>">
+                                                    <?php echo ($user['role'] == '1') ? 'Administrator' : 'Cashier'; ?>
                                                 </span>
                                             </td>
                                             <td>

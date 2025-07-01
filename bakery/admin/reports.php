@@ -470,6 +470,7 @@ include_once '../includes/header.php';
                                 <thead>
                                     <tr>
                                         <th>Product</th>
+                                        <th>Category</th>
                                         <th>Quantity Sold</th>
                                         <th>Total Sales</th>
                                         <th>Average Price</th>
@@ -479,15 +480,16 @@ include_once '../includes/header.php';
                                     <?php if (count($reportData) > 0): ?>
                                         <?php foreach ($reportData as $item): ?>
                                             <tr>
-                                                <td><?php echo $item['product_name']; ?></td>
+                                                <td><?php echo htmlspecialchars($item['product_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['category_name'] ?: 'Uncategorized'); ?></td>
                                                 <td><?php echo $item['quantity_sold']; ?></td>
                                                 <td><?php echo formatCurrency($item['total_sales']); ?></td>
-                                                <td><?php echo formatCurrency($item['total_sales'] / $item['quantity_sold']); ?></td>
+                                                <td><?php echo formatCurrency($item['avg_price']); ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="4" class="text-center">No data available for the selected period.</td>
+                                            <td colspan="5" class="text-center">No data available for the selected period.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
@@ -505,6 +507,7 @@ include_once '../includes/header.php';
                                 <thead>
                                     <tr>
                                         <th>Category</th>
+                                        <th>Products Sold</th>
                                         <th>Quantity Sold</th>
                                         <th>Total Sales</th>
                                         <th>% of Total Sales</th>
@@ -517,7 +520,8 @@ include_once '../includes/header.php';
                                         foreach ($reportData as $item): 
                                         ?>
                                             <tr>
-                                                <td><?php echo $item['category_name'] ?: 'Uncategorized'; ?></td>
+                                                <td><?php echo htmlspecialchars($item['category_name'] ?: 'Uncategorized'); ?></td>
+                                                <td><?php echo $item['products_sold']; ?></td>
                                                 <td><?php echo $item['quantity_sold']; ?></td>
                                                 <td><?php echo formatCurrency($item['total_sales']); ?></td>
                                                 <td><?php echo number_format(($item['total_sales'] / $totalCategorySales) * 100, 2); ?>%</td>
@@ -525,7 +529,7 @@ include_once '../includes/header.php';
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="4" class="text-center">No data available for the selected period.</td>
+                                            <td colspan="5" class="text-center">No data available for the selected period.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
