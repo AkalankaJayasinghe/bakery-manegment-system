@@ -30,14 +30,18 @@ if (!function_exists('isLoggedIn')) {
 // Check if user has admin privileges
 if (!function_exists('hasAdminPrivileges')) {
     function hasAdminPrivileges() {
-        return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+        return isset($_SESSION['role']) && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === '1' || $_SESSION['role'] === 1);
     }
 }
 
 // Check if user has cashier privileges
 if (!function_exists('hasCashierPrivileges')) {
     function hasCashierPrivileges() {
-        return isset($_SESSION['role']) && ($_SESSION['role'] === 'cashier' || $_SESSION['role'] === 'admin');
+        return isset($_SESSION['role']) && (
+            $_SESSION['role'] === 'cashier' || $_SESSION['role'] === 'admin' ||
+            $_SESSION['role'] === '3' || $_SESSION['role'] === 3 ||
+            $_SESSION['role'] === '1' || $_SESSION['role'] === 1
+        );
     }
 }
 
