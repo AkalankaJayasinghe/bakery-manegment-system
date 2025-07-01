@@ -2,15 +2,17 @@
 // Start the session
 session_start();
 
+// Include the compatibility layer
+require_once 'includes/compatibility.php';
+
 // Check if user is logged in and is a cashier
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'cashier' && $_SESSION['role'] !== 'admin')) {
     header('Location: ../auth/login.php');
     exit;
 }
 
-// Include database connection and functions
-require_once '../config/database.php';
-require_once '../includes/functions.php';
+// Get database connection
+$conn = connectDB();
 
 // Get current date and time
 $currentDateTime = date('Y-m-d H:i:s');
@@ -23,34 +25,11 @@ $invoice_no = generateInvoiceNumber();
 $cashier_id = $_SESSION['user_id'];
 $cashier_name = getUserName($conn, $cashier_id);
 
-// Function to get username
-function getUserName($conn, $user_id) {
-    $query = "SELECT full_name FROM users WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        return $row['full_name'];
-    }
-    return 'Unknown';
-}
-
-// Function to generate invoice number
-function generateInvoiceNumber() {
-    $prefix = 'INV';
-    $date = date('Ymd');
-    $random = mt_rand(1000, 9999);
-    return $prefix . $date . $random;
-}
-
 // Fetch all active products with their categories
 $query = "SELECT p.*, c.name as category_name 
           FROM products p 
           LEFT JOIN categories c ON p.category_id = c.id 
-          WHERE p.status = 1 AND p.quantity > 0 
+          WHERE p.status = 1 AND p.stock_quantity > 0 
           ORDER BY c.name, p.name";
 $products = [];
 $result = $conn->query($query);
@@ -130,8 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                 $itemStmt->bind_param("iiddd", $sale_id, $product_id, $quantity, $unit_price, $item_subtotal);
                 $itemStmt->execute();
                 
-                // Update product quantity
-                $updateQuery = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
+                // Update product stock quantity
+                $updateQuery = "UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?";
                 $updateStmt = $conn->prepare($updateQuery);
                 $updateStmt->bind_param("ii", $quantity, $product_id);
                 $updateStmt->execute();
@@ -230,8 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                         <a href="index.php" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-home"></i> Dashboard
                         </a>
-                        <a href="sales_history.php" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-history"></i> Sales History
+                        <a href="invoices.php" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-receipt"></i> Invoices
                         </a>
                     </div>
                 </div>
@@ -296,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                                             </p>
                                                             <p class="card-text small">
                                                                 <small class="text-muted">
-                                                                    Stock: <?php echo $product['quantity']; ?>
+                                                                    Stock: <?php echo $product['stock_quantity']; ?>
                                                                 </small>
                                                             </p>
                                                         </div>
@@ -454,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
         
         if (existingItemIndex !== -1) {
             // Product exists in cart, increment quantity
-            if (cart[existingItemIndex].quantity < product.quantity) {
+            if (cart[existingItemIndex].quantity < product.stock_quantity) {
                 cart[existingItemIndex].quantity += 1;
                 updateCartDisplay();
             } else {
@@ -467,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                 name: product.name,
                 price: parseFloat(product.price),
                 quantity: 1,
-                max_quantity: parseInt(product.quantity)
+                max_quantity: parseInt(product.stock_quantity)
             });
             updateCartDisplay();
         }

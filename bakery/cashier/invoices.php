@@ -1,9 +1,6 @@
 <?php
 session_start();
-require_once '../config/database.php';
-require_once '../config/constants.php';
-require_once '../includes/functions.php';
-require_once '../includes/activity_logger.php'; // Ensure this file contains the logActivity function
+require_once 'includes/compatibility.php';
 
 // Function to get status badge HTML
 function getStatusBadge($status) {

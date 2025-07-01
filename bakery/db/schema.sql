@@ -1,4 +1,4 @@
--- Create database
+mysql -u root -pmysql -u root -p-- Create database
 CREATE DATABASE IF NOT EXISTS bakery_system;
 USE bakery_system;
 

@@ -1,16 +1,9 @@
 <?php
-// Make sure we have access to database constants
-if (!defined('DB_HOST')) {
-    // If constants aren't defined, include them
-    require_once __DIR__ . '/../config/database.php';
-}
+/**
+ * Functions for Bakery Management System
+ */
 
-// Start the session if not already started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Input sanitization function
+// Sanitize input
 if (!function_exists('sanitizeInput')) {
     function sanitizeInput($data) {
         $data = trim($data);
@@ -37,29 +30,30 @@ if (!function_exists('hasAdminPrivileges')) {
 // Check if user has cashier privileges
 if (!function_exists('hasCashierPrivileges')) {
     function hasCashierPrivileges() {
-        return isset($_SESSION['role']) && ($_SESSION['role'] === 'cashier' || $_SESSION['role'] === 'admin');
+        return isset($_SESSION['role']) && $_SESSION['role'] === 'cashier';
     }
 }
 
-// Function to get database connection
+// Get database connection
 if (!function_exists('getDBConnection')) {
     function getDBConnection() {
-        // Check if constants are defined
-        if (!defined('DB_HOST') || !defined('DB_USER') || !defined('DB_PASS') || !defined('DB_NAME')) {
-            error_log("Database constants are not defined");
+        try {
+            $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            
+            if ($conn->connect_error) {
+                error_log("Connection failed: " . $conn->connect_error);
+                return false;
+            }
+            
+            return $conn;
+        } catch (Exception $e) {
+            error_log("Database connection error: " . $e->getMessage());
             return false;
         }
-        
-        $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-        if ($conn->connect_error) {
-            error_log("Connection failed: " . $conn->connect_error);
-            return false;
-        }
-        return $conn;
     }
 }
 
-// Activity logging function
+// Log user activity
 if (!function_exists('logActivity')) {
     function logActivity($action, $description = '') {
         if (!isset($_SESSION['user_id'])) {
@@ -67,26 +61,31 @@ if (!function_exists('logActivity')) {
         }
         
         $user_id = $_SESSION['user_id'];
-        $ip_address = $_SERVER['REMOTE_ADDR'];
         $action = trim($action);
         $description = trim($description);
+        $ip_address = $_SERVER['REMOTE_ADDR'];
         
         try {
             $conn = getDBConnection();
+            
             if (!$conn) {
                 return false;
             }
             
-            // Create table if it doesn't exist
-            $createTable = "CREATE TABLE IF NOT EXISTS activity_logs (
-                id INT(11) AUTO_INCREMENT PRIMARY KEY,
-                user_id INT(11) NOT NULL,
-                action VARCHAR(50) NOT NULL,
-                description TEXT,
-                ip_address VARCHAR(50),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )";
-            $conn->query($createTable);
+            // Check if activity_logs table exists
+            $result = $conn->query("SHOW TABLES LIKE 'activity_logs'");
+            if ($result->num_rows == 0) {
+                // Create table if it doesn't exist
+                $createTable = "CREATE TABLE activity_logs (
+                    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT(11) NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    description TEXT,
+                    ip_address VARCHAR(50),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )";
+                $conn->query($createTable);
+            }
             
             $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
             

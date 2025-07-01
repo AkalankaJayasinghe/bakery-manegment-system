@@ -1,25 +1,33 @@
 <?php
-// Start the session if not already started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Include necessary files
-require_once '../config/database.php';  // Include this FIRST
+session_start();
 require_once '../config/constants.php';
 require_once '../includes/functions.php';
 
-// Log the logout activity if user was logged in
-if (isset($_SESSION['user_id'])) {
-    $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Unknown user';
-    logActivity('logout', "User logged out: $username");
+// Check if user is logged in
+if (isLoggedIn()) {
+    // Log logout activity
+    if (function_exists('logActivity')) {
+        require_once '../config/database.php';
+        logActivity('logout', "User logged out: {$_SESSION['username']}");
+    }
+    
+    // Clear all session variables
+    $_SESSION = array();
+    
+    // If it's desired to kill the session, also delete the session cookie.
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Finally, destroy the session
+    session_destroy();
 }
 
-// Destroy the session
-session_unset();     // Remove all session variables
-session_destroy();   // Destroy the session
-
-// Redirect to the login page
-header("Location: " . SITE_URL . "/auth/login.php?logout=success");
+// Redirect to login page
+header("Location: " . SITE_URL . "/auth/login.php");
 exit;
 ?>
