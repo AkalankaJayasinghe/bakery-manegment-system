@@ -5,8 +5,8 @@ session_start();
 // Include the compatibility layer
 require_once 'includes/compatibility.php';
 
-// Check if user is logged in and is a cashier
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'cashier' && $_SESSION['role'] !== 'admin')) {
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
@@ -24,6 +24,23 @@ $success = '';
 $invoice_no = generateInvoiceNumber();
 $cashier_id = $_SESSION['user_id'];
 $cashier_name = getUserName($conn, $cashier_id);
+
+// Get cart data from session
+$cart_items = [];
+$cart_total = 0;
+$cart_subtotal = 0;
+$cart_tax = 0;
+
+if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+    $cart_items = $_SESSION['cart'];
+    
+    // Calculate totals
+    foreach ($cart_items as $item) {
+        $cart_subtotal += $item['price'] * $item['quantity'];
+    }
+    $cart_tax = $cart_subtotal * 0.1; // 10% tax
+    $cart_total = $cart_subtotal + $cart_tax;
+}
 
 // Fetch all active products with their categories
 $query = "SELECT p.*, c.name as category_name 
@@ -122,8 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
             // Set success message
             $success = "Order #$invoice_no has been successfully processed!";
             
-            // Redirect to invoice page
-            header("Location: invoice.php?id=$sale_id");
+            // Redirect to print and PDF page
+            header("Location: print_and_pdf.php?id=$sale_id");
             exit;
             
         } catch (Exception $e) {
@@ -140,32 +157,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing - Bakery Management System</title>
+    <title>Billing - Bakery POS System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-header {
+            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-icon {
+            font-size: 2.5rem;
+            margin-right: 15px;
+        }
+        
+        .dashboard-nav {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.active {
+            background: white;
+            color: #ff6b6b;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 0 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
         .product-card {
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
             height: 100%;
+            border: 2px solid transparent;
         }
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #ff6b6b;
+        }
+        .product-card:active {
+            transform: translateY(-2px);
+            transition: transform 0.1s ease;
         }
         .cart-item {
-            padding: 10px;
+            padding: 15px;
             border-bottom: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        .cart-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
         }
         .item-quantity {
             width: 60px;
             text-align: center;
+            border-radius: 5px;
         }
         .bill-details {
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
         }
         .search-container {
             position: relative;
@@ -179,50 +276,200 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
             overflow-y: auto;
             background-color: white;
             border: 1px solid #ddd;
-            border-radius: 0 0 5px 5px;
+            border-radius: 0 0 8px 8px;
             z-index: 1000;
             display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .search-result-item {
-            padding: 8px 15px;
+            padding: 12px 15px;
             cursor: pointer;
             border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
         }
         .search-result-item:hover {
             background-color: #f5f5f5;
+        }
+        
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1060;
+        }
+        
+        .custom-toast {
+            min-width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* Loading animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b6b;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Button enhancements */
+        .btn {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .discount-btn.active {
+            background: linear-gradient(135deg, #ff6b6b, #ff5252) !important;
+            color: white !important;
+            border-color: #ff6b6b !important;
+        }
+        
+        /* Cart animations */
+        .cart-add-animation {
+            animation: cartAdd 0.6s ease;
+        }
+        
+        @keyframes cartAdd {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); background-color: #d4edda; }
+            100% { transform: scale(1); }
+        }
+        
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .product-card {
+                margin-bottom: 15px;
+            }
+            
+            .bill-details {
+                margin-top: 20px;
+            }
         }
     </style>
 </head>
 <body>
 
-<?php include_once '../includes/header.php'; ?>
+<!-- Toast container for notifications -->
+<div class="toast-container" id="toastContainer"></div>
 
-<div class="container-fluid">
-    <div class="row">
-        <?php include_once '../includes/sidebar.php'; ?>
-        
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Billing</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a href="index.php" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-home"></i> Dashboard
-                        </a>
-                        <a href="invoices.php" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-receipt"></i> Invoices
-                        </a>
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+        <div class="loading-spinner"></div>
+        <p class="mt-3">Processing order...</p>
+    </div>
+</div>
+
+<!-- Main Header -->
+<header class="main-header">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="logo-section">
+                    <i class="fas fa-birthday-cake logo-icon"></i>
+                    <div>
+                        <h3 class="mb-0">Bakery POS</h3>
+                        <small>Point of Sale System</small>
                     </div>
                 </div>
             </div>
-            
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?php echo $error; ?></div>
-            <?php endif; ?>
-            
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success"><?php echo $success; ?></div>
-            <?php endif; ?>
+            <div class="col-md-4 text-center">
+                <div class="dashboard-nav">
+                    <a href="index.php" class="nav-btn">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a href="billing.php" class="nav-btn active">
+                        <i class="fas fa-cash-register"></i> Billing
+                    </a>
+                    <a href="invoices.php" class="nav-btn">
+                        <i class="fas fa-receipt"></i> Invoices
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="user-info">
+                    <div class="text-end">
+                        <div><strong><?php echo htmlspecialchars($cashier_name); ?></strong></div>
+                        <small>Cashier</small>
+                    </div>
+                    <div class="dropdown">
+                        <button class="nav-btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="../auth/logout.php">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<div class="main-container">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+            <h2 class="mb-0">
+                <i class="fas fa-cash-register text-primary"></i> 
+                Billing & Checkout
+            </h2>
+            <p class="text-muted mb-0">Process orders and generate invoices</p>
+        </div>
+        <div class="col-auto">
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="clearCart()">
+                    <i class="fas fa-trash"></i> Clear Cart
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="location.reload()">
+                    <i class="fas fa-refresh"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (!empty($success)): ?>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle"></i> <?php echo $success; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
             
             <div class="row">
                 <!-- Left side: Product selection -->
@@ -293,6 +540,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                 <!-- Right side: Cart and billing -->
                 <div class="col-md-4">
                     <form id="billingForm" method="POST" action="billing.php">
+                        <input type="hidden" name="cart_items" id="cart_items_input" value='<?php echo htmlspecialchars(json_encode($cart_items)); ?>'>
                         <div class="card mb-4">
                             <div class="card-header">
                                 <h5 class="mb-0">
@@ -330,8 +578,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                 <div class="bill-details">
                                     <div class="d-flex justify-content-between mb-2">
                                         <span>Subtotal:</span>
-                                        <span id="subtotal">$0.00</span>
-                                        <input type="hidden" name="subtotal" id="subtotal_input" value="0">
+                                        <span id="subtotal">$<?php echo number_format($cart_subtotal, 2); ?></span>
+                                        <input type="hidden" name="subtotal" id="subtotal_input" value="<?php echo $cart_subtotal; ?>">
                                     </div>
                                     
                                     <div class="d-flex justify-content-between mb-2">
@@ -342,8 +590,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                                 <span class="input-group-text">%</span>
                                             </div>
                                         </div>
-                                        <span id="tax_amount">$0.00</span>
-                                        <input type="hidden" name="tax_amount" id="tax_amount_input" value="0">
+                                        <span id="tax_amount">$<?php echo number_format($cart_tax, 2); ?></span>
+                                        <input type="hidden" name="tax_amount" id="tax_amount_input" value="<?php echo $cart_tax; ?>">
                                     </div>
                                     
                                     <div class="d-flex justify-content-between mb-2">
@@ -362,8 +610,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                     
                                     <div class="d-flex justify-content-between mb-2 fw-bold">
                                         <span>Total:</span>
-                                        <span id="total_amount">$0.00</span>
-                                        <input type="hidden" name="total_amount" id="total_amount_input" value="0">
+                                        <span id="total_amount">$<?php echo number_format($cart_total, 2); ?></span>
+                                        <input type="hidden" name="total_amount" id="total_amount_input" value="<?php echo $cart_total; ?>">
                                     </div>
                                 </div>
                                 
@@ -404,27 +652,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                     <button type="button" class="btn btn-danger" onclick="clearCart()">
                                         <i class="fas fa-trash"></i> Clear Cart
                                     </button>
-                                    <button type="submit" class="btn btn-primary" name="save_order" id="save_order_btn" disabled>
-                                        <i class="fas fa-save"></i> Complete Order & Print Invoice
+                                    <button type="submit" class="btn btn-primary" name="save_order" id="save_order_btn" <?php echo empty($cart_items) ? 'disabled' : ''; ?>>
+                                        <i class="fas fa-print"></i> Complete Order & Print PDF
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    </form>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 </div>
 
-<?php include_once '../includes/footer.php'; ?>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Initialize cart
-    let cart = [];
+    // Initialize cart with session data
+    let cart = <?php echo json_encode($cart_items); ?>;
     const taxRate = parseFloat(document.getElementById('tax_rate').value) || 10;
     let discountPercent = 0;
+    
+    // Initialize the display when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCartDisplay();
+        updateCartSummary();
+    });
     
     // Add product to cart
     function addToCart(product) {
@@ -436,8 +686,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
             if (cart[existingItemIndex].quantity < product.stock_quantity) {
                 cart[existingItemIndex].quantity += 1;
                 updateCartDisplay();
+                showToast(`${product.name} quantity updated`, 'success');
             } else {
-                alert('Cannot add more of this product. Maximum stock reached.');
+                showToast('Cannot add more of this product. Maximum stock reached.', 'warning');
             }
         } else {
             // Add new product to cart
@@ -449,13 +700,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                 max_quantity: parseInt(product.stock_quantity)
             });
             updateCartDisplay();
+            showToast(`${product.name} added to cart`, 'success');
         }
+        
+        // Add visual feedback to the cart area
+        const cartContainer = document.getElementById('cart-items');
+        cartContainer.classList.add('cart-add-animation');
+        setTimeout(() => {
+            cartContainer.classList.remove('cart-add-animation');
+        }, 600);
     }
     
     // Remove item from cart
     function removeFromCart(index) {
+        const itemName = cart[index].name;
         cart.splice(index, 1);
         updateCartDisplay();
+        showToast(`${itemName} removed from cart`, 'info');
     }
     
     // Update quantity of an item in cart
@@ -464,7 +725,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
             newQuantity = 1;
         } else if (newQuantity > cart[index].max_quantity) {
             newQuantity = cart[index].max_quantity;
-            alert('Maximum available quantity for this product is ' + cart[index].max_quantity);
+            showToast(`Maximum available quantity for ${cart[index].name} is ${cart[index].max_quantity}`, 'warning');
         }
         
         cart[index].quantity = newQuantity;
@@ -518,6 +779,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
         // Update the cart summary
         updateCartSummary();
         
+        // Update PDF button state
+        updatePDFButtonState();
+        
         // Update hidden input for form submission
         document.getElementById('cart_items_input').value = JSON.stringify(cart);
     }
@@ -558,12 +822,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
         discountAmountInput.value = discountAmount.toFixed(2);
         totalAmountInput.value = totalAmount.toFixed(2);
     }
+    }
     
     // Clear the cart
     function clearCart() {
         if (confirm('Are you sure you want to clear the cart?')) {
             cart = [];
             updateCartDisplay();
+            showToast('Cart cleared', 'info');
+        }
+    }
+    
+    // Show toast notification
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+        
+        const bgClass = {
+            'success': 'bg-success',
+            'error': 'bg-danger',
+            'warning': 'bg-warning',
+            'info': 'bg-info'
+        }[type] || 'bg-info';
+        
+        const iconClass = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-exclamation-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        }[type] || 'fas fa-info-circle';
+        
+        const toastHTML = `
+            <div class="toast custom-toast ${bgClass} text-white" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header ${bgClass} text-white border-0">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">Notification</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 3000
+        });
+        
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            toastElement.remove();
+        });
+    }
+    
+    // Show loading overlay
+    function showLoading() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+    
+    // Hide loading overlay
+    function hideLoading() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+    
+    // Update PDF button state
+    function updatePDFButtonState() {
+        const saveOrderBtn = document.getElementById('save_order_btn');
+        if (cart.length === 0) {
+            saveOrderBtn.disabled = true;
+            saveOrderBtn.classList.add('disabled');
+        } else {
+            saveOrderBtn.disabled = false;
+            saveOrderBtn.classList.remove('disabled');
         }
     }
     
@@ -645,7 +981,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                                 <span>${product.name}</span>
                                 <span class="badge bg-primary">$${parseFloat(product.price).toFixed(2)}</span>
                             </div>
-                            <small class="text-muted">${product.category_name || 'Uncategorized'} - Stock: ${product.quantity}</small>
+                            <small class="text-muted">${product.category_name || 'Uncategorized'} - Stock: ${product.stock_quantity}</small>
                         </div>
                     `;
                 });
@@ -669,9 +1005,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
         document.getElementById('billingForm').addEventListener('submit', function(e) {
             if (cart.length === 0) {
                 e.preventDefault();
-                alert('Cart is empty. Please add products to the cart.');
+                showToast('Cart is empty. Please add products to the cart.', 'error');
                 return false;
             }
+            
+            // Show loading overlay
+            showLoading();
+            
+            // Optional: Add small delay to show loading animation
+            setTimeout(() => {
+                // Form will submit naturally
+            }, 500);
             
             return true;
         });
@@ -684,6 +1028,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
                 bsAlert.close();
             });
         }, 5000);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + Enter to submit order
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    document.getElementById('billingForm').submit();
+                } else {
+                    showToast('Cart is empty. Add products first.', 'warning');
+                }
+            }
+            
+            // Ctrl + D to clear cart
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                clearCart();
+            }
+            
+            // F1 to focus search
+            if (e.key === 'F1') {
+                e.preventDefault();
+                document.getElementById('productSearch').focus();
+            }
+            
+            // Escape to close search results
+            if (e.key === 'Escape') {
+                document.getElementById('searchResults').style.display = 'none';
+            }
+        });
+        
+        // Show keyboard shortcuts info
+        showToast('Keyboard shortcuts: F1 (Search), Ctrl+Enter (Submit), Ctrl+D (Clear Cart)', 'info');
     });
 </script>
 

@@ -2,51 +2,40 @@
 session_start();
 require_once 'includes/compatibility.php';
 
-// Function to get status badge HTML
-function getStatusBadge($status) {
-    switch ($status) {
-        case INVOICE_PAID:
-            return '<span class="badge bg-success">Paid</span>';
-        case INVOICE_UNPAID:
-            return '<span class="badge bg-warning">Unpaid</span>';
-        case INVOICE_CANCELLED:
-            return '<span class="badge bg-danger">Cancelled</span>';
-        default:
-            return '<span class="badge bg-secondary">Unknown</span>';
-    }
-}
-
 // Check if user is logged in
-if (!isLoggedIn()) {
-    header("Location: " . SITE_URL . "/auth/login.php");
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../auth/login.php");
     exit;
 }
 
-// Check if user has cashier privileges
-if (!hasCashierPrivileges()) {
-    header("Location: " . SITE_URL . "/index.php?error=unauthorized");
-    exit;
-}
+// Get database connection
+$conn = connectDB();
+$cashier_id = $_SESSION['user_id'];
+$cashier_name = getUserName($conn, $cashier_id);
 
-// Database connection
-$conn = getDBConnection();
+// Get invoices/sales
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 20;
+$offset = ($page - 1) * $limit;
 
-// Initialize variables
-$error = '';
-$success = '';
-$startDate = date('Y-m-d', strtotime('-7 days'));
-$endDate = date('Y-m-d');
-$invoiceStatus = '';
-$searchTerm = '';
-$invoices = [];
+$salesQuery = "SELECT s.*, u.first_name, u.last_name, 
+               COUNT(si.id) as item_count
+               FROM sales s 
+               LEFT JOIN users u ON s.cashier_id = u.id 
+               LEFT JOIN sale_items si ON s.id = si.sale_id
+               GROUP BY s.id
+               ORDER BY s.created_at DESC 
+               LIMIT ? OFFSET ?";
+$salesStmt = $conn->prepare($salesQuery);
+$salesStmt->bind_param("ii", $limit, $offset);
+$salesStmt->execute();
+$salesResult = $salesStmt->get_result();
 
-// Process search filters
-if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['filter'])) {
-    $startDate = isset($_GET['start_date']) ? $_GET['start_date'] : $startDate;
-    $endDate = isset($_GET['end_date']) ? $_GET['end_date'] : $endDate;
-    $invoiceStatus = isset($_GET['status']) ? $_GET['status'] : '';
-    $searchTerm = isset($_GET['search']) ? htmlspecialchars($_GET['search'], ENT_QUOTES, 'UTF-8') : '';
-}
+// Get total count for pagination
+$countQuery = "SELECT COUNT(*) as total FROM sales";
+$countResult = $conn->query($countQuery);
+$totalSales = $countResult->fetch_assoc()['total'];
+$totalPages = ceil($totalSales / $limit);
 
 // Handle invoice actions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

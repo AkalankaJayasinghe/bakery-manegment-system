@@ -28,76 +28,11 @@ while ($row = $categories_result->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Dashboard - Bakery Management System</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Point of Sale - Bakery Management System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .main-header {
-            background: linear-gradient(135deg, #ff6b6b, #ff5252);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .logo-section {
-            display: flex;
-            align-items: center;
-        }
-        
-        .logo-icon {
-            font-size: 2.5rem;
-            margin-right: 15px;
-        }
-        
-        .dashboard-nav {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .nav-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 25px;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-        
-        .nav-btn:hover {
-            background: rgba(255,255,255,0.3);
-            color: white;
-            transform: translateY(-2px);
-        }
-        
-        .nav-btn.active {
-            background: white;
-            color: #ff6b6b;
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .main-container {
-            background: white;
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 0 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
         :root {
             --primary-color: #ff6b6b;
             --secondary-color: #4ecdc4;
@@ -575,131 +510,35 @@ while ($row = $categories_result->fetch_assoc()) {
         .pulse {
             animation: pulse 2s infinite;
         }
-
-        /* Notification Styles */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--success-color);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            z-index: 2000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.error {
-            background: var(--danger-color);
-        }
-
-        .notification.warning {
-            background: var(--warning-color);
-        }
-
-        /* Product card animations for adding to cart */
-        .product-card.adding {
-            animation: addToCartPulse 0.3s ease;
-        }
-
-        @keyframes addToCartPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        /* Cart badge animation */
-        .cart-count.updated {
-            animation: bounce 0.6s ease;
-        }
-
-        @keyframes bounce {
-            0%, 20%, 60%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            80% { transform: translateY(-5px); }
-        }
     </style>
 </head>
 <body>
-    <!-- Main Header -->
-    <header class="main-header">
-        <div class="container-fluid">
+    <div class="bg-animation"></div>
+    
+    <!-- Header -->
+    <div class="top-bar">
+        <div class="container">
             <div class="row align-items-center">
-                <div class="col-md-4">
-                    <div class="logo-section">
-                        <i class="fas fa-birthday-cake logo-icon"></i>
-                        <div>
-                            <h3 class="mb-0">Bakery POS</h3>
-                            <small>Point of Sale System</small>
-                        </div>
-                    </div>
+                <div class="col-md-6">
+                    <h2><i class="fas fa-cash-register"></i> Point of Sale</h2>
                 </div>
-                <div class="col-md-4 text-center">
-                    <div class="dashboard-nav">
-                        <a href="index.php" class="nav-btn active">
-                            <i class="fas fa-home"></i> Dashboard
-                        </a>
-                        <a href="billing.php" class="nav-btn">
-                            <i class="fas fa-cash-register"></i> Billing
-                        </a>
-                        <a href="invoices.php" class="nav-btn">
-                            <i class="fas fa-receipt"></i> Invoices
-                        </a>
-                    </div>
-                </div>
-                <div class="col-md-4 text-end">
+                <div class="col-md-6 text-right">
                     <div class="user-info">
-                        <div class="text-end">
-                            <div><strong><?php echo htmlspecialchars($username); ?></strong></div>
-                            <small>Cashier</small>
-                        </div>
-                        <div class="dropdown">
-                            <button class="nav-btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user"></i>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="../auth/logout.php">
-                                    <i class="fas fa-sign-out-alt"></i> Logout
-                                </a></li>
-                            </ul>
-                        </div>
+                        <i class="fas fa-user-circle"></i> Welcome, <?php echo htmlspecialchars($username); ?>!
+                        <a href="../auth/logout.php" class="btn btn-outline-danger btn-sm ml-2">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
-    </header>
+    </div>
 
-    <!-- Main Content -->
-    <div class="main-container">
-        <div class="row align-items-center mb-4">
-            <div class="col">
-                <h2 class="mb-0">
-                    <i class="fas fa-cash-register text-primary"></i> 
-                    POS Dashboard
-                </h2>
-                <p class="text-muted mb-0">Select products and manage your cart</p>
-            </div>
-            <div class="col-auto">
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary btn-sm" onclick="clearCart()">
-                        <i class="fas fa-trash"></i> Clear Cart
-                    </button>
-                    <button class="btn btn-outline-success btn-sm" onclick="location.reload()">
-                        <i class="fas fa-refresh"></i> Refresh
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <!-- Products Section -->
-            <div class="col-lg-8">
+    <div class="pos-container">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Products Section -->
+                <div class="col-lg-8">
                     <!-- Search Bar -->
                     <div class="search-container fade-in-up">
                         <div class="row">
@@ -785,7 +624,8 @@ while ($row = $categories_result->fetch_assoc()) {
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     
     <script>
         // Cart functionality
@@ -844,34 +684,10 @@ while ($row = $categories_result->fetch_assoc()) {
             }
             
             productsToShow.forEach(function(product) {
-                // Choose icon based on category or product name
-                let productIcon = 'fas fa-cookie-bite'; // default
-                if (product.category_name) {
-                    switch(product.category_name.toLowerCase()) {
-                        case 'bread':
-                            productIcon = 'fas fa-bread-slice';
-                            break;
-                        case 'pastries':
-                            productIcon = 'fas fa-croissant';
-                            break;
-                        case 'cakes':
-                            productIcon = 'fas fa-birthday-cake';
-                            break;
-                        case 'cookies':
-                            productIcon = 'fas fa-cookie';
-                            break;
-                        case 'beverages':
-                            productIcon = 'fas fa-coffee';
-                            break;
-                        default:
-                            productIcon = 'fas fa-cookie-bite';
-                    }
-                }
-                
                 const productCard = `
                     <div class="product-card" data-product-id="${product.id}">
                         <div class="product-image">
-                            <i class="${productIcon}"></i>
+                            <i class="fas fa-cookie-bite"></i>
                         </div>
                         <div class="product-name">${product.name}</div>
                         <div class="product-price">$${parseFloat(product.price).toFixed(2)}</div>
@@ -904,20 +720,13 @@ while ($row = $categories_result->fetch_assoc()) {
         // Add product to cart
         function addToCart(productId) {
             const product = products.find(p => p.id == productId);
-            if (!product || product.stock_quantity <= 0) {
-                showNotification('Product is out of stock!', 'error');
-                return;
-            }
+            if (!product || product.stock_quantity <= 0) return;
             
             const existingItem = cart.find(item => item.id == productId);
             
             if (existingItem) {
                 if (existingItem.quantity < product.stock_quantity) {
                     existingItem.quantity++;
-                    showNotification(`Added another ${product.name} to cart!`, 'success');
-                } else {
-                    showNotification('Maximum stock quantity reached!', 'warning');
-                    return;
                 }
             } else {
                 cart.push({
@@ -927,14 +736,7 @@ while ($row = $categories_result->fetch_assoc()) {
                     quantity: 1,
                     max_quantity: product.stock_quantity
                 });
-                showNotification(`${product.name} added to cart!`, 'success');
             }
-            
-            // Add visual feedback
-            $(`.product-card[data-product-id="${productId}"]`).addClass('adding');
-            setTimeout(() => {
-                $(`.product-card[data-product-id="${productId}"]`).removeClass('adding');
-            }, 300);
             
             updateCartDisplay();
         }
@@ -945,12 +747,7 @@ while ($row = $categories_result->fetch_assoc()) {
             const cartCount = $('#cartCount');
             const cartSummary = $('#cartSummary');
             
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCount.text(totalItems);
-            
-            // Add animation to cart count
-            cartCount.addClass('updated');
-            setTimeout(() => cartCount.removeClass('updated'), 600);
+            cartCount.text(cart.reduce((sum, item) => sum + item.quantity, 0));
             
             if (cart.length === 0) {
                 cartItems.html(`
@@ -1004,30 +801,6 @@ while ($row = $categories_result->fetch_assoc()) {
             cartSummary.show();
         }
         
-        // Show notification
-        function showNotification(message, type = 'success') {
-            // Remove existing notifications
-            $('.notification').remove();
-            
-            const notification = $(`
-                <div class="notification ${type}">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
-                    ${message}
-                </div>
-            `);
-            
-            $('body').append(notification);
-            
-            // Show notification
-            setTimeout(() => notification.addClass('show'), 100);
-            
-            // Hide notification after 3 seconds
-            setTimeout(() => {
-                notification.removeClass('show');
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
-        }
-        
         // Update quantity
         function updateQuantity(productId, newQuantity) {
             const item = cart.find(item => item.id == productId);
@@ -1050,37 +823,26 @@ while ($row = $categories_result->fetch_assoc()) {
         
         // Remove from cart
         function removeFromCart(productId) {
-            const item = cart.find(item => item.id == productId);
-            if (item) {
-                showNotification(`${item.name} removed from cart!`, 'warning');
-            }
             cart = cart.filter(item => item.id != productId);
             updateCartDisplay();
         }
         
         // Clear cart
         function clearCart() {
-            if (cart.length === 0) {
-                showNotification('Cart is already empty!', 'warning');
-                return;
-            }
+            if (cart.length === 0) return;
             
             if (confirm('Are you sure you want to clear the cart?')) {
                 cart = [];
                 updateCartDisplay();
-                showNotification('Cart cleared successfully!', 'success');
             }
         }
         
         // Proceed to checkout
         function proceedToCheckout() {
             if (cart.length === 0) {
-                showNotification('Your cart is empty!', 'error');
+                alert('Your cart is empty!');
                 return;
             }
-            
-            // Show loading state
-            $('.checkout-btn').html('<i class="fas fa-spinner fa-spin"></i> Processing...');
             
             // Store cart in session and redirect to billing
             $.ajax({
@@ -1088,14 +850,10 @@ while ($row = $categories_result->fetch_assoc()) {
                 method: 'POST',
                 data: { cart: JSON.stringify(cart) },
                 success: function() {
-                    showNotification('Redirecting to checkout...', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'billing.php';
-                    }, 1000);
+                    window.location.href = 'billing.php';
                 },
                 error: function() {
-                    showNotification('Error processing cart. Please try again.', 'error');
-                    $('.checkout-btn').html('<i class="fas fa-credit-card"></i> Proceed to Checkout');
+                    alert('Error processing cart. Please try again.');
                 }
             });
         }

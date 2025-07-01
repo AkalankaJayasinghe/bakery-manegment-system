@@ -1,0 +1,14 @@
+{
+    "name": "bakery/pos-system",
+    "description": "Bakery Point of Sale System",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "tecnickcom/tcpdf": "^6.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bakery\\": "src/"
+        }
+    }
+}

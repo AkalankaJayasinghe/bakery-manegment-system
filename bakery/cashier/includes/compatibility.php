@@ -11,6 +11,15 @@ if (!function_exists('formatCurrency')) {
     }
 }
 
+// Safe session handling
+if (!function_exists('ensureSession')) {
+    function ensureSession() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+}
+
 if (!function_exists('isLoggedIn')) {
     function isLoggedIn() {
         return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
@@ -231,6 +240,21 @@ if (!function_exists('createBasicTables')) {
                          ('Cakes', 'Birthday and celebration cakes'),
                          ('Cookies', 'Fresh baked cookies and biscuits'),
                          ('Beverages', 'Hot and cold beverages')");
+        }
+        
+        // Check if stock_quantity column exists, if not add it or use quantity
+        $columnExists = false;
+        $result = $conn->query("SHOW COLUMNS FROM products LIKE 'stock_quantity'");
+        if ($result && $result->num_rows > 0) {
+            $columnExists = true;
+        } else {
+            // Check if quantity column exists and add stock_quantity
+            $quantityExists = $conn->query("SHOW COLUMNS FROM products LIKE 'quantity'");
+            if ($quantityExists && $quantityExists->num_rows > 0) {
+                // Add stock_quantity column and copy data from quantity
+                $conn->query("ALTER TABLE products ADD COLUMN stock_quantity INT DEFAULT 0");
+                $conn->query("UPDATE products SET stock_quantity = quantity WHERE stock_quantity = 0");
+            }
         }
         
         // Insert sample products if none exist
