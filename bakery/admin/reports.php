@@ -40,9 +40,9 @@ function getDailySalesData($conn, $startDate, $endDate) {
     $sql = "SELECT DATE(created_at) as sale_date, 
             SUM(total_amount) as total_sales, 
             COUNT(*) as num_transactions
-            FROM sales
+            FROM invoices
             WHERE DATE(created_at) BETWEEN ? AND ? 
-            AND payment_status = 'paid'
+            AND status = 1
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at) ASC";
     
@@ -63,13 +63,16 @@ function getProductSalesData($conn, $startDate, $endDate) {
     $data = [];
     
     $sql = "SELECT p.name as product_name,
-            SUM(si.quantity) as quantity_sold,
-            SUM(si.subtotal) as total_sales
-            FROM sale_items si
-            JOIN products p ON si.product_id = p.id
-            JOIN sales s ON si.sale_id = s.id
-            WHERE DATE(s.created_at) BETWEEN ? AND ?
-            AND s.payment_status = 'paid'
+            c.name as category_name,
+            SUM(ii.quantity) as quantity_sold,
+            SUM(ii.subtotal) as total_sales,
+            ROUND(AVG(ii.unit_price), 2) as avg_price
+            FROM invoice_items ii
+            JOIN products p ON ii.product_id = p.id
+            JOIN invoices i ON ii.invoice_id = i.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE DATE(i.created_at) BETWEEN ? AND ?
+            AND i.status = 1
             GROUP BY p.id
             ORDER BY quantity_sold DESC";
     
@@ -90,14 +93,15 @@ function getCategorySalesData($conn, $startDate, $endDate) {
     $data = [];
     
     $sql = "SELECT c.name as category_name,
-            SUM(si.quantity) as quantity_sold,
-            SUM(si.subtotal) as total_sales
-            FROM sale_items si
-            JOIN products p ON si.product_id = p.id
+            SUM(ii.quantity) as quantity_sold,
+            SUM(ii.subtotal) as total_sales,
+            COUNT(DISTINCT p.id) as products_sold
+            FROM invoice_items ii
+            JOIN products p ON ii.product_id = p.id
             JOIN categories c ON p.category_id = c.id
-            JOIN sales s ON si.sale_id = s.id
-            WHERE DATE(s.created_at) BETWEEN ? AND ?
-            AND s.payment_status = 'paid'
+            JOIN invoices i ON ii.invoice_id = i.id
+            WHERE DATE(i.created_at) BETWEEN ? AND ?
+            AND i.status = 1
             GROUP BY c.id
             ORDER BY total_sales DESC";
     
@@ -117,15 +121,16 @@ function getCategorySalesData($conn, $startDate, $endDate) {
 function getCashierPerformanceData($conn, $startDate, $endDate) {
     $data = [];
     
-    $sql = "SELECT u.full_name as cashier_name,
-            COUNT(s.id) as num_transactions,
-            SUM(s.total_amount) as total_sales,
-            AVG(s.total_amount) as avg_transaction
-            FROM sales s
-            JOIN users u ON s.cashier_id = u.id
-            WHERE DATE(s.created_at) BETWEEN ? AND ?
-            AND s.payment_status = 'paid'
-            GROUP BY s.cashier_id
+    $sql = "SELECT CONCAT(u.first_name, ' ', u.last_name) as cashier_name,
+            u.username,
+            COUNT(i.id) as num_transactions,
+            SUM(i.total_amount) as total_sales,
+            ROUND(AVG(i.total_amount), 2) as avg_transaction
+            FROM invoices i
+            JOIN users u ON i.user_id = u.id
+            WHERE DATE(i.created_at) BETWEEN ? AND ?
+            AND i.status = 1
+            GROUP BY i.user_id
             ORDER BY total_sales DESC";
     
     $stmt = $conn->prepare($sql);
@@ -144,14 +149,13 @@ function getCashierPerformanceData($conn, $startDate, $endDate) {
 function getInventoryStatusData($conn) {
     $data = [];
     
-    $sql = "SELECT p.id, p.name, p.quantity as stock_quantity, 
-            FLOOR(p.quantity * 0.2) as reorder_level, 
+    $sql = "SELECT p.id, p.name, p.stock_quantity, p.reorder_level,
             c.name as category_name, p.price, p.cost_price,
             (p.price - p.cost_price) as profit_margin,
-            (p.price - p.cost_price) * p.quantity as potential_profit
+            (p.price - p.cost_price) * p.stock_quantity as potential_profit
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
-            ORDER BY p.quantity ASC";
+            ORDER BY p.stock_quantity ASC";
     
     $result = $conn->query($sql);
     
@@ -166,17 +170,17 @@ function getInventoryStatusData($conn) {
 function getLowStockProductsData($conn) {
     $data = [];
     
-    $sql = "SELECT p.id, p.name, p.quantity as stock_quantity, 
-            FLOOR(p.quantity * 0.2) as reorder_level, 
+    $sql = "SELECT p.id, p.name, p.stock_quantity, p.reorder_level,
             c.name as category_name, 
-            (SELECT SUM(quantity) FROM sale_items si 
-             JOIN sales s ON si.sale_id = s.id 
-             WHERE si.product_id = p.id 
-             AND DATE(s.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) as monthly_demand
+            (SELECT SUM(ii.quantity) FROM invoice_items ii 
+             JOIN invoices i ON ii.invoice_id = i.id 
+             WHERE ii.product_id = p.id 
+             AND DATE(i.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+             AND i.status = 1) as monthly_demand
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
-            WHERE p.quantity <= FLOOR(p.quantity * 0.2)
-            ORDER BY p.quantity ASC";
+            WHERE p.stock_quantity <= p.reorder_level
+            ORDER BY p.stock_quantity ASC";
     
     $result = $conn->query($sql);
     
@@ -192,7 +196,7 @@ function getSummaryMetrics($conn, $startDate, $endDate) {
     $metrics = [];
     
     // Total sales
-    $stmt = $conn->prepare("SELECT SUM(total_amount) as total_sales, COUNT(*) as total_invoices FROM sales WHERE DATE(created_at) BETWEEN ? AND ? AND payment_status = 'paid'");
+    $stmt = $conn->prepare("SELECT SUM(total_amount) as total_sales, COUNT(*) as total_invoices FROM invoices WHERE DATE(created_at) BETWEEN ? AND ? AND status = 1");
     $stmt->bind_param("ss", $startDate, $endDate);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -204,11 +208,11 @@ function getSummaryMetrics($conn, $startDate, $endDate) {
     $metrics['avg_sale'] = ($metrics['total_invoices'] > 0) ? ($metrics['total_sales'] / $metrics['total_invoices']) : 0;
     
     // Total items sold
-    $stmt = $conn->prepare("SELECT SUM(si.quantity) as total_items 
-                          FROM sale_items si 
-                          JOIN sales s ON si.sale_id = s.id 
-                          WHERE DATE(s.created_at) BETWEEN ? AND ? 
-                          AND s.payment_status = 'paid'");
+    $stmt = $conn->prepare("SELECT SUM(ii.quantity) as total_items 
+                          FROM invoice_items ii 
+                          JOIN invoices i ON ii.invoice_id = i.id 
+                          WHERE DATE(i.created_at) BETWEEN ? AND ? 
+                          AND i.status = 1");
     $stmt->bind_param("ss", $startDate, $endDate);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -216,12 +220,12 @@ function getSummaryMetrics($conn, $startDate, $endDate) {
     $metrics['total_items'] = $row['total_items'] ?: 0;
     
     // Profit calculation
-    $stmt = $conn->prepare("SELECT SUM((p.price - p.cost_price) * si.quantity) as total_profit
-                          FROM sale_items si 
-                          JOIN products p ON si.product_id = p.id
-                          JOIN sales s ON si.sale_id = s.id 
-                          WHERE DATE(s.created_at) BETWEEN ? AND ? 
-                          AND s.payment_status = 'paid'");
+    $stmt = $conn->prepare("SELECT SUM((p.price - p.cost_price) * ii.quantity) as total_profit
+                          FROM invoice_items ii 
+                          JOIN products p ON ii.product_id = p.id
+                          JOIN invoices i ON ii.invoice_id = i.id 
+                          WHERE DATE(i.created_at) BETWEEN ? AND ? 
+                          AND i.status = 1");
     $stmt->bind_param("ss", $startDate, $endDate);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -355,8 +359,19 @@ include_once '../includes/header.php';
                             <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo $endDate; ?>">
                         </div>
                         
-                        <div class="col-md-3 d-flex align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Quick Date Ranges</label>
+                            <div class="btn-group d-flex" role="group">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('today')">Today</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('week')">This Week</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('month')">This Month</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('year')">This Year</button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-12 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary me-2">Generate Report</button>
+                            <button type="button" class="btn btn-secondary" onclick="resetFilters()">Reset</button>
                         </div>
                     </form>
                 </div>
@@ -969,6 +984,56 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(link);
     });
 });
+
+// Date range helper functions
+function setDateRange(range) {
+    const startDate = document.getElementById('start_date');
+    const endDate = document.getElementById('end_date');
+    const today = new Date();
+    
+    switch(range) {
+        case 'today':
+            const todayStr = today.toISOString().split('T')[0];
+            startDate.value = todayStr;
+            endDate.value = todayStr;
+            break;
+            
+        case 'week':
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            
+            startDate.value = startOfWeek.toISOString().split('T')[0];
+            endDate.value = endOfWeek.toISOString().split('T')[0];
+            break;
+            
+        case 'month':
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            
+            startDate.value = startOfMonth.toISOString().split('T')[0];
+            endDate.value = endOfMonth.toISOString().split('T')[0];
+            break;
+            
+        case 'year':
+            const startOfYear = new Date(today.getFullYear(), 0, 1);
+            const endOfYear = new Date(today.getFullYear(), 11, 31);
+            
+            startDate.value = startOfYear.toISOString().split('T')[0];
+            endDate.value = endOfYear.toISOString().split('T')[0];
+            break;
+    }
+}
+
+function resetFilters() {
+    document.getElementById('report').value = 'sales';
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
+    document.getElementById('end_date').value = new Date().toISOString().split('T')[0];
+}
 
 // Auto-hide alerts after 5 seconds
 setTimeout(function() {

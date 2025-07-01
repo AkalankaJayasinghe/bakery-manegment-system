@@ -30,6 +30,11 @@
                     <i class="fa fa-bar-chart"></i> Reports
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>" href="<?php echo ADMIN_URL; ?>/activity_logs.php">
+                    <i class="fa fa-history"></i> Activity Logs
+                </a>
+            </li>
         </ul>
         <?php endif; ?>
         
