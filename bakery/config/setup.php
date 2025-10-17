@@ -115,13 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup'])) {
         // Create sale_items table
         $sql = "CREATE TABLE IF NOT EXISTS sale_items (
             id INT(11) AUTO_INCREMENT PRIMARY KEY,
-            sale_id INT(11) NOT NULL,
+            sale_id INT(11),
             product_id INT(11),
             quantity INT(11) NOT NULL,
             unit_price DECIMAL(10,2) NOT NULL,
             subtotal DECIMAL(10,2) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+            FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
         )";
         

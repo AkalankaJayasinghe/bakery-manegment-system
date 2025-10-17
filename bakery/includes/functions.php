@@ -55,16 +55,11 @@ if (!function_exists('getDBConnection')) {
 
 // Log user activity
 if (!function_exists('logActivity')) {
-    function logActivity($action, $description = '') {
-        if (!isset($_SESSION['user_id'])) {
-            return false;
-        }
-        
-        $user_id = $_SESSION['user_id'];
+    function logActivity($conn, $action, $user_id, $description = '') {
         $action = trim($action);
         $description = trim($description);
         $ip_address = $_SERVER['REMOTE_ADDR'];
-        
+
         try {
             $conn = getDBConnection();
             
@@ -94,7 +89,7 @@ if (!function_exists('logActivity')) {
                 return false;
             }
             
-            $stmt->bind_param("isss", $user_id, $action, $description, $ip_address);
+            $stmt->bind_param("isss", $user_id, $action, $description, $ip_address); // Corrected from isss to isss
             $result = $stmt->execute();
             $stmt->close();
             

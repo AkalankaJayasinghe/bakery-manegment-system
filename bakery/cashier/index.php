@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 require_once 'includes/compatibility.php';
 
 // Check if user is logged in
@@ -15,12 +16,100 @@ $conn = connectDB();
 $user_id = $_SESSION['user_id'];
 $username = getUserName($conn, $user_id);
 
+// Handle AJAX requests for dashboard data
+if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+    if (isset($_GET['action']) && $_GET['action'] == 'get_dashboard_data') {
+        
+        $response = [
+            'status' => 'success',
+            'data' => [
+                'sales_today' => getTodaySales($conn, $user_id),
+                'orders_today' => getTodayOrders($conn, $user_id),
+                'total_products' => getTotalProducts($conn),
+                'low_stock_count' => getLowStockCount($conn),
+                'recent_sales' => getRecentSales($conn, $user_id, 5),
+                'top_products' => getTopSellingProducts($conn, $user_id, 5)
+            ]
+        ];
+        
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
+    }
+}
+
+// Function to get today's sales for the current cashier
+function getTodaySales($conn, $user_id) {
+    $today = date('Y-m-d');
+    $query = "SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE cashier_id = ? AND DATE(created_at) = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("is", $user_id, $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_assoc()['total'];
+}
+
+// Function to get today's order count for the current cashier
+function getTodayOrders($conn, $user_id) {
+    $today = date('Y-m-d');
+    $query = "SELECT COUNT(*) as total FROM sales WHERE cashier_id = ? AND DATE(created_at) = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("is", $user_id, $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_assoc()['total'];
+}
+
+// Function to get total active products
+function getTotalProducts($conn) {
+    $query = "SELECT COUNT(*) as total FROM products WHERE status = 1";
+    $result = $conn->query($query);
+    return $result->fetch_assoc()['total'];
+}
+
+// Function to get low stock product count
+function getLowStockCount($conn) {
+    $query = "SELECT COUNT(*) as total FROM products WHERE quantity <= 10 AND status = 1";
+    $result = $conn->query($query);
+    return $result->fetch_assoc()['total'];
+}
+
+// Function to get recent sales for the current cashier
+function getRecentSales($conn, $user_id, $limit = 5) {
+    $query = "SELECT id, invoice_no, total_amount, created_at FROM sales WHERE cashier_id = ? ORDER BY created_at DESC LIMIT ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $user_id, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_all(MYSQLI_ASSOC);
+}
+
+// Function to get top selling products for the current cashier
+function getTopSellingProducts($conn, $user_id, $limit = 5) {
+    $query = "SELECT p.name, SUM(si.quantity) as total_sold
+              FROM sale_items si
+              JOIN sales s ON si.sale_id = s.id
+              JOIN products p ON si.product_id = p.id
+              WHERE s.cashier_id = ?
+              GROUP BY p.id
+              ORDER BY total_sold DESC
+              LIMIT ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $user_id, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_all(MYSQLI_ASSOC);
+}
+
 // Get categories for tabs
 $categories_result = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY name");
 $categories = [];
 while ($row = $categories_result->fetch_assoc()) {
     $categories[] = $row;
 }
+
+// Set page title
+$pageTitle = "POS Dashboard";
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +117,7 @@ while ($row = $categories_result->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Dashboard - Bakery Management System</title>
+    <title><?php echo $pageTitle; ?> - Bakery Management System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -37,6 +126,19 @@ while ($row = $categories_result->fetch_assoc()) {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             font-family: 'Poppins', sans-serif;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
         }
         
         .main-header {
@@ -619,6 +721,11 @@ while ($row = $categories_result->fetch_assoc()) {
             animation: bounce 0.6s ease;
         }
 
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
         @keyframes bounce {
             0%, 20%, 60%, 100% { transform: translateY(0); }
             40% { transform: translateY(-10px); }
@@ -627,6 +734,11 @@ while ($row = $categories_result->fetch_assoc()) {
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
     <!-- Main Header -->
     <header class="main-header">
         <div class="container-fluid">
@@ -687,10 +799,10 @@ while ($row = $categories_result->fetch_assoc()) {
             </div>
             <div class="col-auto">
                 <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary btn-sm" onclick="clearCart()">
-                        <i class="fas fa-trash"></i> Clear Cart
+                    <a href="billing.php" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> New Sale
                     </button>
-                    <button class="btn btn-outline-success btn-sm" onclick="location.reload()">
+                    <button class="btn btn-outline-success btn-sm" id="refreshBtn">
                         <i class="fas fa-refresh"></i> Refresh
                     </button>
                 </div>

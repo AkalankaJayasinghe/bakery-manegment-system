@@ -1,5 +1,10 @@
 <?php
 /**
+ * NOTE: This file appears to be a duplicate or an outdated version of the main functions file.
+ * It's recommended to consolidate functions into a single `includes/functions.php` file.
+ * For now, I'm adding the missing functions here to ensure functionality.
+ */
+/**
  * Authentication related functions
  */
 
@@ -11,6 +16,19 @@
  */
 function hashPassword($password) {
     return password_hash($password, PASSWORD_DEFAULT);
+}
+
+/**
+ * Sanitize user input
+ * 
+ * @param string $data Input data
+ * @return string Sanitized data
+ */
+function sanitizeInput($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
 }
 
 /**
@@ -160,4 +178,28 @@ function isPasswordSecure($password) {
             preg_match('/[0-9]/', $password) && 
             preg_match('/[^A-Za-z0-9]/', $password));
 }
+?>
+<?php
+/**
+ * Log user activity
+ * 
+ * @param object $conn Database connection
+ * @param string $action The action performed
+ * @param int $user_id The ID of the user performing the action
+ */
+function logActivity($conn, $action, $user_id) {
+    $ip_address = $_SERVER['REMOTE_ADDR'];
+    
+    // Check if activity_logs table exists
+    $table_check = $conn->query("SHOW TABLES LIKE 'activity_logs'");
+    if ($table_check->num_rows > 0) {
+        $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
+        if ($stmt) {
+            $stmt->bind_param("iss", $user_id, $action, $ip_address);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+}
+
 ?>

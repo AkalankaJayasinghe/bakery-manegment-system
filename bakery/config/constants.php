@@ -6,7 +6,11 @@
  */
 
 // Base URLs
-define('SITE_URL', 'http://localhost/bakery');
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'];
+$script_name = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+$project_path = rtrim(preg_replace('/\/config$/', '', $script_name), '/');
+define('SITE_URL', $protocol . '://' . $host . $project_path);
 define('ADMIN_URL', SITE_URL . '/admin');
 define('CASHIER_URL', SITE_URL . '/cashier');
 define('ASSETS_URL', SITE_URL . '/assets');

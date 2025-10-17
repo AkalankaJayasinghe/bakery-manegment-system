@@ -822,7 +822,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_order'])) {
         discountAmountInput.value = discountAmount.toFixed(2);
         totalAmountInput.value = totalAmount.toFixed(2);
     }
-    }
     
     // Clear the cart
     function clearCart() {

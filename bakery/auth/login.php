@@ -8,7 +8,7 @@ require_once '../includes/functions.php';
 if (isLoggedIn()) {
     // Redirect to appropriate dashboard
     if (hasAdminPrivileges()) {
-        header("Location: " . ADMIN_URL);
+        header("Location: " . SITE_URL . "/admin");
         exit;
     } else if (hasCashierPrivileges()) {
         header("Location: " . CASHIER_URL);
@@ -21,6 +21,7 @@ if (isLoggedIn()) {
 
 $error = '';
 $username = '';
+$success = isset($_GET['logged_out']) ? 'You have been successfully logged out.' : '';
 
 // Check if form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -52,8 +53,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($result->num_rows == 1) {
                 $user = $result->fetch_assoc();
                 
-                // Verify password - for testing purposes, check both hashed and plain passwords
-                if (password_verify($password, $user['password']) || $password === $user['password']) {
+                // Verify password
+                if (password_verify($password, $user['password'])) {
                     // Check if account is active
                     if (isset($user['status']) && $user['status'] != 1) {
                         $error = "Your account has been deactivated. Please contact administrator.";
@@ -66,18 +67,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         
                         // Log the activity if function exists
                         if (function_exists('logActivity')) {
-                            logActivity('login', 'User logged in successfully');
+                            http://localhost/bakery%20system/bakery-manegment-system/bakery/auth/login.php                            logActivity($conn, 'login', $user['id'], 'User logged in successfully');
                         }
                         
                         // Redirect based on role
                         if ($user['role'] === 'admin') {
-                            header("Location: ../admin/index.php");
+                            header("Location: " . SITE_URL . "/admin/index.php");
                             exit;
                         } else if ($user['role'] === 'cashier') {
-                            header("Location: ../cashier/index.php");
+                            header("Location: " . CASHIER_URL . "/index.php");
                             exit;
                         } else {
-                            header("Location: ../index.php");
+                            header("Location: " . SITE_URL . "/index.php");
                             exit;
                         }
                     }
@@ -368,6 +369,13 @@ $pageTitle = "Login";
                 </div>
             <?php endif; ?>
             
+            <?php if (!empty($success)): ?>
+                <div class="alert-success-custom">
+                    <i class="fas fa-check-circle alert-icon"></i>
+                    <div><?php echo $success; ?></div>
+                </div>
+            <?php endif; ?>
+            
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
                 <div class="form-floating">
                     <input type="text" class="form-control" id="username" name="username" placeholder="Username" value="<?php echo htmlspecialchars($username); ?>" required>
@@ -391,7 +399,7 @@ $pageTitle = "Login";
             </div>
             
             <div class="current-time">
-                <?php echo date('F j, Y - g:i A'); ?>
+                <span id="realtime-clock"><?php echo date('F j, Y - g:i A'); ?></span>
             </div>
         </div>
     </div>
@@ -410,6 +418,17 @@ $pageTitle = "Login";
                 }, 500);
             });
         }, 5000);
+
+        // Real-time clock
+        const clockElement = document.getElementById('realtime-clock');
+        function updateClock() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true };
+            clockElement.textContent = now.toLocaleString('en-US', options);
+        }
+        // Update immediately and then every second
+        updateClock();
+        setInterval(updateClock, 1000);
     </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once '../config/database.php';
 require_once '../config/constants.php';
+require_once '../config/database.php';
 require_once '../includes/functions.php';
 
 // Check if user is already logged in
@@ -51,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = "Invalid role selected";
     } else {
         try {
-            $conn = getDBConnection();
+            $conn = connectDB();
             
             if (!$conn) {
                 throw new Exception("Database connection failed");
